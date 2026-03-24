@@ -1,12 +1,113 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 
 const UTM_FIELDS = [
-  { key: 'utm_source', label: 'Source', placeholder: 'e.g. google, twitter, newsletter' },
-  { key: 'utm_medium', label: 'Medium', placeholder: 'e.g. cpc, social, email' },
-  { key: 'utm_campaign', label: 'Campaign', placeholder: 'e.g. spring_sale_2026' },
-  { key: 'utm_term', label: 'Term', placeholder: 'e.g. running+shoes' },
-  { key: 'utm_content', label: 'Content', placeholder: 'e.g. header_link, blue_cta' },
+  {
+    key: 'utm_source',
+    label: 'Source',
+    placeholder: 'Type or select a source...',
+    suggestions: ['google', 'facebook', 'twitter', 'linkedin', 'instagram', 'youtube', 'tiktok', 'reddit', 'newsletter', 'bing', 'pinterest', 'email'],
+  },
+  {
+    key: 'utm_medium',
+    label: 'Medium',
+    placeholder: 'Type or select a medium...',
+    suggestions: ['cpc', 'cpm', 'social', 'email', 'organic', 'referral', 'display', 'affiliate', 'video', 'podcast', 'banner', 'push'],
+  },
+  {
+    key: 'utm_campaign',
+    label: 'Campaign',
+    placeholder: 'Type or select a campaign...',
+    suggestions: ['spring_sale_2026', 'product_launch', 'brand_awareness', 'retargeting', 'black_friday', 'newsletter_weekly', 'webinar_promo', 'free_trial'],
+  },
+  {
+    key: 'utm_term',
+    label: 'Term',
+    placeholder: 'Type or select a term...',
+    suggestions: ['branded', 'non_branded', 'competitor', 'long_tail', 'exact_match', 'broad_match'],
+  },
+  {
+    key: 'utm_content',
+    label: 'Content',
+    placeholder: 'Type or select content...',
+    suggestions: ['header_link', 'footer_link', 'sidebar_cta', 'blue_cta', 'hero_banner', 'text_link', 'image_ad', 'video_ad', 'carousel', 'popup'],
+  },
 ]
+
+function ComboboxInput({ value, onChange, suggestions, placeholder }) {
+  const [open, setOpen] = useState(false)
+  const [filter, setFilter] = useState('')
+  const wrapperRef = useRef(null)
+  const inputRef = useRef(null)
+
+  const filtered = suggestions.filter((s) =>
+    s.toLowerCase().includes((filter || value).toLowerCase())
+  )
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false)
+        setFilter('')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  function handleInputChange(e) {
+    const val = e.target.value
+    onChange(val)
+    setFilter(val)
+    setOpen(true)
+  }
+
+  function handleSelect(suggestion) {
+    onChange(suggestion)
+    setFilter('')
+    setOpen(false)
+    inputRef.current?.focus()
+  }
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <div className="relative">
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={handleInputChange}
+          onFocus={() => setOpen(true)}
+          placeholder={placeholder}
+          className="w-full px-3 py-2 pr-8 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+        />
+        <button
+          type="button"
+          onClick={() => { setOpen(!open); inputRef.current?.focus() }}
+          className="absolute inset-y-0 right-0 flex items-center pr-2 text-slate-400 hover:text-slate-600"
+        >
+          <svg className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
+      {open && filtered.length > 0 && (
+        <ul className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+          {filtered.map((s) => (
+            <li
+              key={s}
+              onClick={() => handleSelect(s)}
+              className={`px-3 py-2 text-sm cursor-pointer hover:bg-indigo-50 hover:text-indigo-700 ${
+                value === s ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-700'
+              }`}
+            >
+              {s}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 export default function LinkGenerator({ onLinkCreated }) {
   const [baseUrl, setBaseUrl] = useState('')
@@ -130,15 +231,14 @@ export default function LinkGenerator({ onLinkCreated }) {
 
         {/* UTM Fields */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {UTM_FIELDS.map(({ key, label, placeholder }) => (
+          {UTM_FIELDS.map(({ key, label, placeholder, suggestions }) => (
             <div key={key}>
               <label className="block text-sm font-medium text-slate-700 mb-1">{label}</label>
-              <input
-                type="text"
+              <ComboboxInput
                 value={utmParams[key]}
-                onChange={(e) => handleUtmChange(key, e.target.value)}
+                onChange={(val) => handleUtmChange(key, val)}
+                suggestions={suggestions}
                 placeholder={placeholder}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
           ))}
